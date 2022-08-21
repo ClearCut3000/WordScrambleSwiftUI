@@ -16,6 +16,7 @@ struct ContentView: View {
   @State private var errorTitle = ""
   @State private var errorMessage = ""
   @State private var showingAlert = false
+  @State private var score = 0
 
   //MARK: - View
   var body: some View {
@@ -35,9 +36,27 @@ struct ContentView: View {
           }
         }
       }
+      
       .navigationTitle(rootWord)
+
       .onSubmit(addNewWord)
       .onAppear(perform: startGame)
+      .toolbar {
+        ToolbarItem(placement: .primaryAction) {
+          Button {
+            restartGame()
+          } label: {
+            Image(systemName: "arrow.counterclockwise")
+          }
+        }
+        ToolbarItem(placement: .navigationBarLeading) {
+            Text(" Score: \(score) ")
+            .font(.system(size: 26, weight: .bold, design: .default))
+            .background(score == 0 ? Color.red : Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+        }
+      }
       .alert(errorTitle, isPresented: $showingAlert) {
         Button("OK", role: .cancel) { }
       } message: {
@@ -49,7 +68,7 @@ struct ContentView: View {
   //MARK: - Methods
   func addNewWord() {
     let answer = newWord.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-    guard answer.count > 0 else { return }
+    guard answer.count > 3, answer != newWord.prefix(3) else { return }
 
     guard isOriginal(word: answer) else {
       wordError(title: "Word used already!", message: "Be more original!")
@@ -67,6 +86,7 @@ struct ContentView: View {
 
     withAnimation {
       usedWords.insert(answer, at: 0)
+      score += answer.count
     }
     newWord = ""
   }
@@ -80,6 +100,14 @@ struct ContentView: View {
       }
     }
     fatalError("Couldn't load start.txt from bundle!")
+  }
+
+  func restartGame() {
+    startGame()
+    rootWord = ""
+    newWord = ""
+    errorTitle = ""
+    errorMessage = ""
   }
 
   func isOriginal(word: String) -> Bool {
