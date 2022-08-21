@@ -17,16 +17,20 @@ struct ContentView: View {
   @State private var errorMessage = ""
   @State private var showingAlert = false
   @State private var score = 0
+  @State private var isAnswerLimitOn = false
+  @State private var placeholderText = "Enter your word..."
 
   //MARK: - View
   var body: some View {
     NavigationView {
       List {
         Section {
-          TextField("Enter your word", text: $newWord)
+          TextField($placeholderText.wrappedValue, text: $newWord,
+                    onCommit: { placeholderText = newWord })
             .textInputAutocapitalization(.none)
+            .disableAutocorrection(true)
+            .autocapitalization(.none)
         }
-
         Section {
           ForEach(usedWords, id: \.self) { word in
             HStack {
@@ -36,9 +40,7 @@ struct ContentView: View {
           }
         }
       }
-      
       .navigationTitle(rootWord)
-
       .onSubmit(addNewWord)
       .onAppear(perform: startGame)
       .toolbar {
@@ -47,20 +49,36 @@ struct ContentView: View {
             restartGame()
           } label: {
             Image(systemName: "arrow.counterclockwise")
+              .font(Font.title)
+              .foregroundColor(Color(UIColor.red))
           }
         }
         ToolbarItem(placement: .navigationBarLeading) {
-            Text(" Score: \(score) ")
+            Text("Score: \(score)")
+            .padding(6)
             .font(.system(size: 26, weight: .bold, design: .default))
             .background(score == 0 ? Color.red : Color.blue)
             .foregroundColor(.white)
             .cornerRadius(10)
+        }
+        ToolbarItem(placement: .bottomBar) {
+          Button {
+            isAnswerLimitOn.toggle()
+          } label: {
+            Text(isAnswerLimitOn ? "Hard mode is ON!" : "Hard mode is OFF")
+              .font(.system(size: 22, weight: .bold, design: .default))
+          }
+          .padding(8)
+          .background(isAnswerLimitOn ? Color.red : Color.green)
+          .foregroundColor(isAnswerLimitOn ? .white : .black)
+          .cornerRadius(10)
         }
       }
       .alert(errorTitle, isPresented: $showingAlert) {
         Button("OK", role: .cancel) { }
       } message: {
         Text(errorMessage)
+          .font(.system(size: 24, weight: .semibold, design: .default))
       }
     }
   }
@@ -68,7 +86,20 @@ struct ContentView: View {
   //MARK: - Methods
   func addNewWord() {
     let answer = newWord.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-    guard answer.count > 3, answer != newWord.prefix(3) else { return }
+
+    defer {
+      newWord = ""
+    }
+
+    switch isAnswerLimitOn {
+    case true:
+      guard answer.count > 3, answer != newWord.prefix(3) else {
+        wordError(title: "Oops!", message: "Answers must be more than 3 letters and not consist of the beginning of a keyword!")
+        return
+      }
+    case false:
+      guard answer.count > 0 else { return }
+    }
 
     guard isOriginal(word: answer) else {
       wordError(title: "Word used already!", message: "Be more original!")
@@ -104,10 +135,10 @@ struct ContentView: View {
 
   func restartGame() {
     startGame()
-    rootWord = ""
     newWord = ""
-    errorTitle = ""
-    errorMessage = ""
+  placeholderText = "Enter your word..."
+    score = 0
+    usedWords.removeAll()
   }
 
   func isOriginal(word: String) -> Bool {
